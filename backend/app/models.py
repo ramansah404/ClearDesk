@@ -71,8 +71,11 @@ class File(Base):
     role = Column(String(32), default="material", nullable=False)  # material, syllabus, past_paper, other
     pdf_path = Column(String(512), nullable=True)  # Path to converted/original PDF for viewer
     page_count = Column(Integer, default=0, nullable=False)
+    file_size = Column(Integer, default=0, nullable=False)
     status = Column(String(32), default="processing", nullable=False)  # processing, ready, failed
+    error_message = Column(Text, nullable=True)
     uploaded_at = Column(DateTime, default=utc_now, nullable=False)
+
 
 
     # Relationships

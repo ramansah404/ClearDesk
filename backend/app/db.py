@@ -31,6 +31,20 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
-    """Create all registered database tables."""
+    """Create all registered database tables and apply safe schema updates."""
     import app.models  # noqa: F401 - ensure models are registered
     Base.metadata.create_all(bind=engine)
+
+    # Safe column migrations for SQLite
+    from sqlalchemy import inspect, text
+    inspector = inspect(engine)
+    if "files" in inspector.get_table_names():
+        columns = [c["name"] for c in inspector.get_columns("files")]
+        with engine.connect() as conn:
+            if "file_size" not in columns:
+                conn.execute(text("ALTER TABLE files ADD COLUMN file_size INTEGER DEFAULT 0"))
+                conn.commit()
+            if "error_message" not in columns:
+                conn.execute(text("ALTER TABLE files ADD COLUMN error_message TEXT"))
+                conn.commit()
+

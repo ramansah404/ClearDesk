@@ -54,7 +54,10 @@ class FileResponse(BaseModel):
     type: str
     role: str
     page_count: int
+    file_size: int = 0
     status: str
+    error_message: Optional[str] = None
     uploaded_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+

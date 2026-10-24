@@ -134,6 +134,9 @@ def get_health(db: Session = Depends(get_db)) -> HealthResponse:
     )
 
 
+from app.routers import files  # noqa: E402
+app.include_router(files.router)
+
 
 @app.get("/", tags=["System"])
 def root() -> dict:
@@ -145,3 +148,4 @@ def root() -> dict:
         "docs": "/docs",
         "health": "/health",
     }
+
