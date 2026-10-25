@@ -45,13 +45,23 @@ app = FastAPI(
 
 # Configure CORS
 origins = settings.cors_origins if isinstance(settings.cors_origins, list) else [settings.cors_origins]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+cors_kwargs = {
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+    "expose_headers": ["*"],
+    "max_age": 86400,
+}
+if "*" in origins:
+    cors_kwargs["allow_origins"] = ["*"]
+    cors_kwargs["allow_credentials"] = False
+else:
+    cors_kwargs["allow_origins"] = origins
+    cors_kwargs["allow_credentials"] = True
+
+if settings.cors_origin_regex:
+    cors_kwargs["allow_origin_regex"] = settings.cors_origin_regex
+
+app.add_middleware(CORSMiddleware, **cors_kwargs)
 
 
 # Global Exception Handlers returning structured ErrorResponse
@@ -154,5 +164,6 @@ def root() -> dict:
         "docs": "/docs",
         "health": "/health",
     }
+
 
 

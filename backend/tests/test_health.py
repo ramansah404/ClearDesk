@@ -1,4 +1,4 @@
-"""Unit and integration tests for /health and core API behavior."""
+﻿"""Unit and integration tests for /health and core API behavior."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -67,3 +67,46 @@ def test_database_tables_exist(client):
 
     for table in expected_tables:
         assert table in table_names, f"Table '{table}' should be created in SQLite database"
+
+
+def test_cors_production_origin_get_request(client):
+    """Verify production Vercel frontend origin receives Access-Control headers."""
+    prod_origin = "https://clear-desk-one.vercel.app"
+    response = client.get("/health", headers={"Origin": prod_origin})
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == prod_origin
+    assert response.headers.get("access-control-allow-credentials") == "true"
+
+
+def test_cors_production_origin_options_preflight(client):
+    """Verify OPTIONS preflight request for API routes succeeds with full CORS headers."""
+    prod_origin = "https://clear-desk-one.vercel.app"
+    response = client.options(
+        "/files",
+        headers={
+            "Origin": prod_origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-workspace-id",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == prod_origin
+    assert "POST" in response.headers.get("access-control-allow-methods", "")
+    assert response.headers.get("access-control-allow-credentials") == "true"
+    assert response.headers.get("access-control-max-age") == "86400"
+
+
+def test_cors_vercel_preview_regex(client):
+    """Verify Vercel preview deployment URLs match CORS origin regex."""
+    preview_origin = "https://clear-desk-git-main-ramansah.vercel.app"
+    response = client.get("/health", headers={"Origin": preview_origin})
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == preview_origin
+
+
+def test_cors_unauthorized_origin_rejected(client):
+    """Verify unauthorized origin is not granted Access-Control-Allow-Origin."""
+    bad_origin = "https://unauthorized-malicious-site.com"
+    response = client.get("/health", headers={"Origin": bad_origin})
+    assert response.status_code == 200
+    assert "access-control-allow-origin" not in response.headers

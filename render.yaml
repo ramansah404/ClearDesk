@@ -32,9 +32,9 @@
       - key: CHROMA_DIR
         value: /var/data/chroma_data
       - key: CORS_ORIGIN_REGEX
-        value: "https://.*\\.onrender\\.com"
+        value: "https://.*(\\.vercel\\.app|\\.onrender\\.com)"
       - key: CORS_ORIGINS
-        value: "http://localhost:3000"
+        value: "https://clear-desk-one.vercel.app,http://localhost:3000,http://127.0.0.1:3000"
 
   # ========================================================
   # ClearDesk Frontend Web Service (Next.js 16)
@@ -52,3 +52,5 @@
         value: 20
       - key: NEXT_PUBLIC_API_URL
         sync: false
+
+

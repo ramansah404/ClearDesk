@@ -27,8 +27,12 @@ class Settings(BaseSettings):
     # Server settings
     host: str = "0.0.0.0"
     port: int = 8000
-    cors_origins: Union[List[str], str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
-    cors_origin_regex: Optional[str] = None
+    cors_origins: Union[List[str], str] = [
+        "https://clear-desk-one.vercel.app",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+    cors_origin_regex: Optional[str] = r"^https:\/\/.*(\.vercel\.app|\.onrender\.com)$"
 
     # Google Gemini API
     gemini_api_key: str = ""
@@ -48,16 +52,28 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: Union[str, List[str]]) -> List[str]:
-        """Parse comma-separated string of origins into a list."""
+        """Parse comma-separated string of origins into a list, ensuring production Vercel domain is present."""
+        origins: List[str] = []
         if isinstance(value, str):
             if value.startswith("[") and value.endswith("]"):
                 import json
                 try:
-                    return json.loads(value)
+                    origins = json.loads(value)
                 except Exception:
                     pass
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
-        return value
+            if not origins:
+                origins = [origin.strip() for origin in value.split(",") if origin.strip()]
+        elif isinstance(value, list):
+            origins = [str(o).strip() for o in value if str(o).strip()]
+        else:
+            origins = []
+
+        # Guarantee production frontend origin is always allowed
+        prod_origin = "https://clear-desk-one.vercel.app"
+        if prod_origin not in origins:
+            origins.append(prod_origin)
+
+        return origins
 
     @model_validator(mode="after")
     def resolve_persistent_paths(self) -> "Settings":
