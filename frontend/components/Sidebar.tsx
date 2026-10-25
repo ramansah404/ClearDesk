@@ -1,215 +1,246 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Link from "next/navigation";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  UploadCloud,
+  FileText,
   BookOpen,
-  MessageSquareQuote,
+  StickyNote,
   CheckSquare,
   Target,
   HelpCircle,
-  Sparkles,
-  Server,
+  Plus,
+  ChevronLeft,
+  Menu,
   X,
 } from "lucide-react";
-import { checkBackendHealth, HealthCheckResponse } from "@/lib/api";
 
 interface SidebarProps {
   mobileOpen: boolean;
   onCloseMobile: () => void;
+  onOpenDeleteModal?: () => void;
 }
-
-const NAV_ITEMS = [
-  {
-    name: "Overview",
-    href: "/",
-    icon: LayoutDashboard,
-    badge: null,
-  },
-  {
-    name: "Upload",
-    href: "/upload",
-    icon: UploadCloud,
-    badge: "Phase 1",
-  },
-  {
-    name: "Notes",
-    href: "/notes",
-    icon: BookOpen,
-    badge: "Phase 3",
-  },
-  {
-    name: "Ask",
-    href: "/ask",
-    icon: MessageSquareQuote,
-    badge: "Phase 2",
-  },
-  {
-    name: "Action Board",
-    href: "/action-board",
-    icon: CheckSquare,
-    badge: "Phase 4",
-  },
-  {
-    name: "Exam Radar",
-    href: "/exam-radar",
-    icon: Target,
-    badge: "Phase 5",
-  },
-  {
-    name: "Quiz",
-    href: "/quiz",
-    icon: HelpCircle,
-    badge: "Phase 5",
-  },
-];
 
 export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
-  const [health, setHealth] = useState<HealthCheckResponse | null>(null);
-  const [healthStatus, setHealthStatus] = useState<"checking" | "ok" | "offline">("checking");
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
   useEffect(() => {
-    let mounted = true;
-    async function ping() {
-      const result = await checkBackendHealth();
-      if (!mounted) return;
-      if (result.ok && result.data) {
-        setHealth(result.data);
-        setHealthStatus("ok");
-      } else {
-        setHealthStatus("offline");
-      }
+    const saved = localStorage.getItem("cleardesk_sidebar_collapsed");
+    if (saved !== null) {
+      setIsCollapsed(saved === "true");
     }
-    ping();
-    const timer = setInterval(ping, 15000);
-    return () => {
-      mounted = false;
-      clearInterval(timer);
-    };
   }, []);
+
+  const toggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("cleardesk_sidebar_collapsed", String(next));
+      return next;
+    });
+  };
+
+  const navSections = [
+    {
+      title: "Collect",
+      items: [
+        {
+          name: "Sources",
+          href: "/upload",
+          icon: FileText,
+        },
+      ],
+    },
+    {
+      title: "Process",
+      items: [
+        {
+          name: "Research & Ask",
+          href: "/ask",
+          icon: BookOpen,
+        },
+        {
+          name: "3-Level Notes",
+          href: "/notes",
+          icon: StickyNote,
+        },
+      ],
+    },
+    {
+      title: "Action & Planning",
+      items: [
+        {
+          name: "Action Board",
+          href: "/action-board",
+          icon: CheckSquare,
+        },
+        {
+          name: "Exam Radar",
+          href: "/exam-radar",
+          icon: Target,
+        },
+        {
+          name: "Quiz Drills",
+          href: "/quiz",
+          icon: HelpCircle,
+        },
+      ],
+    },
+  ];
 
   return (
     <>
       {/* Mobile Backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-xs md:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs md:hidden"
           onClick={onCloseMobile}
         />
       )}
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white shadow-xs transition-transform duration-200 ease-in-out md:static md:translate-x-0 ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-40 flex flex-col border-r border-[#D8E1EE] bg-[#EAF0F8] text-[#17243B] transition-all duration-200 ease-out md:static ${
+          isCollapsed ? "w-16" : "w-64"
+        } ${mobileOpen ? "translate-x-0 w-64" : "-translate-x-full md:translate-x-0"}`}
       >
-        {/* Brand Header */}
-        <div className="flex h-16 items-center justify-between border-b border-slate-100 px-5">
-          <a href="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-sm">
-              <Sparkles className="h-5 w-5" />
+        {/* Header with Prominent ClearDesk brand */}
+        <div
+          className={`flex h-[76px] items-center border-b border-[#D8E1EE] px-3.5 ${
+            isCollapsed && !mobileOpen ? "justify-center px-2" : "justify-between"
+          }`}
+        >
+          {isCollapsed && !mobileOpen ? (
+            <div className="relative flex items-center justify-center w-full group">
+              <Link
+                href="/"
+                className="relative h-11 w-11 shrink-0 transition-opacity group-hover:opacity-0"
+                title="ClearDesk Home"
+              >
+                <Image
+                  src="/branding/cleardesk-icon.png"
+                  alt="ClearDesk"
+                  width={44}
+                  height={44}
+                  priority
+                  unoptimized
+                  className="h-full w-full object-contain"
+                />
+              </Link>
+              <button
+                onClick={toggleCollapse}
+                className="absolute rounded-md p-1.5 text-[#17243B] hover:bg-[#DDE7F5] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                title="Expand sidebar"
+                aria-label="Expand sidebar"
+              >
+                <Menu className="h-4 w-4" />
+              </button>
             </div>
-            <div>
-              <span className="text-base font-bold tracking-tight text-slate-900">
-                ClearDesk
-              </span>
-              <span className="ml-1.5 rounded-sm bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600">
-                v0.1
-              </span>
-            </div>
-          </a>
-          <button
-            onClick={onCloseMobile}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 md:hidden"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          ) : (
+            <>
+              <Link
+                href="/"
+                onClick={onCloseMobile}
+                className="flex items-center gap-3.5 transition-opacity hover:opacity-90"
+                title="ClearDesk Home"
+              >
+                <div className="relative h-[46px] w-[46px] shrink-0">
+                  <Image
+                    src="/branding/cleardesk-icon.png"
+                    alt="ClearDesk icon"
+                    width={46}
+                    height={46}
+                    priority
+                    unoptimized
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div className="relative h-[46px] w-[138px] shrink-0">
+                  <Image
+                    src="/branding/cleardesk-wordmark.png"
+                    alt="ClearDesk"
+                    width={138}
+                    height={46}
+                    priority
+                    unoptimized
+                    className="h-full w-full object-contain object-left"
+                  />
+                </div>
+              </Link>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={toggleCollapse}
+                  className="hidden md:flex rounded-md p-1.5 text-[#5B6880] hover:bg-[#DDE7F5] hover:text-[#17243B] transition cursor-pointer"
+                  title="Collapse sidebar"
+                  aria-label="Collapse sidebar"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={onCloseMobile}
+                  className="flex md:hidden rounded-md p-1.5 text-[#5B6880] hover:bg-[#DDE7F5]"
+                  aria-label="Close sidebar"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Navigation Links */}
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          <div className="px-3 py-2 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
-            Workspace Modules
-          </div>
+        {/* Primary Action Button: + Add Document (Solid Blue #2457D6) */}
+        <div className={`p-3 border-b border-[#D8E1EE] ${isCollapsed && !mobileOpen ? "px-2" : "px-3"}`}>
+          <Link
+            href="/upload"
+            onClick={onCloseMobile}
+            title="Add Documents"
+            className={`flex items-center justify-center gap-2 rounded-[6px] bg-[#2457D6] hover:bg-[#1947B8] text-white font-semibold text-[13.5px] py-2.5 shadow-xs transition-colors cursor-pointer ${
+              isCollapsed && !mobileOpen ? "px-0 w-full" : "w-full px-3"
+            }`}
+          >
+            <Plus className="h-4 w-4 shrink-0 stroke-[2.5]" />
+            {(!isCollapsed || mobileOpen) && <span>Add Document</span>}
+          </Link>
+        </div>
 
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-
-            return (
-              <a
-                key={item.href}
-                href={item.href}
-                onClick={onCloseMobile}
-                className={`group flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all ${
-                  isActive
-                    ? "bg-blue-50/80 text-blue-700 shadow-xs border border-blue-100 font-semibold"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon
-                    className={`h-4.5 w-4.5 transition ${
-                      isActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"
-                    }`}
-                  />
-                  <span>{item.name}</span>
+        {/* Navigation Sections */}
+        <nav className={`flex-1 space-y-4 overflow-y-auto py-3.5 pb-6 ${isCollapsed && !mobileOpen ? "px-2" : "px-3"}`}>
+          {navSections.map((section, idx) => (
+            <div key={section.title} className="space-y-1">
+              {idx > 0 && <div className="my-2.5 border-t border-[#D8E1EE]/70" />}
+              {(!isCollapsed || mobileOpen) && (
+                <div className="px-2.5 pt-1.5 pb-1 text-[11.5px] font-bold uppercase tracking-wider text-[#53627A]">
+                  {section.title}
                 </div>
-                {item.badge && (
-                  <span
-                    className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium transition ${
+              )}
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onCloseMobile}
+                    title={item.name}
+                    className={`relative flex items-center gap-3 rounded-[6px] py-2 text-[14px] leading-normal font-medium transition ${
+                      isCollapsed && !mobileOpen ? "justify-center px-0" : "px-3 justify-start"
+                    } ${
                       isActive
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-slate-600"
+                        ? "bg-[#E8F0FF] font-semibold text-[#2457D6] border border-[#D4E4FC] shadow-2xs before:absolute before:-left-1.5 before:top-[6px] before:bottom-[6px] before:w-[3px] before:rounded-r before:bg-[#2457D6]"
+                        : "text-[#17243B] hover:bg-[#DDE7F5] hover:text-[#0F172A]"
                     }`}
                   >
-                    {item.badge}
-                  </span>
-                )}
-              </a>
-            );
-          })}
-        </nav>
-
-        {/* Backend Connectivity Status Footer */}
-        <div className="border-t border-slate-100 p-3 bg-slate-50/60">
-          <div className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-2xs">
-            <div className="flex items-center gap-2">
-              <Server className="h-4 w-4 text-slate-400" />
-              <div className="text-xs">
-                <p className="font-medium text-slate-700">FastAPI Backend</p>
-                <p className="text-[10px] text-slate-400">
-                  {healthStatus === "ok"
-                    ? `v${health?.version || "0.1.0"} · DB Active`
-                    : healthStatus === "checking"
-                    ? "Connecting..."
-                    : "Offline (Port 8000)"}
-                </p>
-              </div>
+                    <Icon className={`h-[18px] w-[18px] shrink-0 ${isActive ? "text-[#2457D6]" : "text-[#5B6880]"}`} />
+                    {(!isCollapsed || mobileOpen) && <span>{item.name}</span>}
+                  </Link>
+                );
+              })}
             </div>
-            <span
-              className={`h-2.5 w-2.5 rounded-full ring-2 ring-white ${
-                healthStatus === "ok"
-                  ? "bg-emerald-500 animate-pulse"
-                  : healthStatus === "checking"
-                  ? "bg-amber-400"
-                  : "bg-rose-400"
-              }`}
-              title={
-                healthStatus === "ok"
-                  ? "Backend connected"
-                  : healthStatus === "checking"
-                  ? "Checking health"
-                  : "Backend disconnected"
-              }
-            />
-          </div>
-        </div>
+          ))}
+        </nav>
       </aside>
     </>
   );

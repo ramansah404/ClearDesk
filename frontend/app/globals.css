@@ -1,36 +1,269 @@
 @import "tailwindcss";
 
+/* ============================================================================
+   CLEARDESK — REFINED PREMIUM SAAS DESIGN FOUNDATION
+   Palette: Soft Blue-Gray Canvas (#F3F6FB), Distinct Sidebar (#EAF0F8),
+   Solid White Surfaces (#FFFFFF), Deep Navy Typography (#17243B),
+   Restrained Electric Blue Accents (#2457D6), Crisp Borders (#D8E1EE).
+   ========================================================================== */
+
+@theme {
+  --color-background: #F3F6FB;
+  --color-foreground: #17243B;
+
+  --color-sidebar: #EAF0F8;
+  --color-sidebar-foreground: #17243B;
+  --color-sidebar-border: #D8E1EE;
+  --color-sidebar-accent: #E8F0FF;
+
+  --color-card: #FFFFFF;
+  --color-card-foreground: #17243B;
+
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #17243B;
+
+  --color-surface: #FFFFFF;
+  --color-surface-secondary: #F7F9FD;
+  --color-surface-sunken: #EDF2F9;
+
+  --color-border: #D8E1EE;
+  --color-border-strong: #C4D0E0;
+
+  --color-primary: #2457D6;
+  --color-primary-hover: #1947B8;
+  --color-primary-foreground: #FFFFFF;
+
+  --color-accent-blue: #2457D6;
+  --color-accent-blue-soft: #E8F0FF;
+  --color-accent-blue-tint: #D4E4FC;
+
+  --color-muted: #F7F9FD;
+  --color-muted-foreground: #5B6880;
+  --color-text-faint: #78869B;
+
+  --color-success: #16805D;
+  --color-success-tint: #EAF6F1;
+  --color-warning: #B7791F;
+  --color-warning-tint: #FEF8E7;
+  --color-destructive: #C43D4B;
+  --color-destructive-tint: #FDF2F2;
+
+  /* Backward-compatible accent names */
+  --color-fern: #2457D6;
+  --color-fern-deep: #1947B8;
+  --color-fern-tint: #E8F0FF;
+
+  --color-teal: #2457D6;
+  --color-teal-deep: #1947B8;
+  --color-teal-tint: #E8F0FF;
+
+  --color-sage: #5B6880;
+  --color-sage-deep: #17243B;
+  --color-sage-tint: #EDF2F9;
+
+  --color-gold: #B7791F;
+  --color-gold-deep: #8E5D14;
+  --color-gold-tint: #FEF8E7;
+
+  --color-clay: #C43D4B;
+  --color-clay-deep: #9F2C38;
+  --color-clay-tint: #FDF2F2;
+
+  --color-plum: #5D4991;
+  --color-plum-tint: #EAE6F3;
+
+  /* Format dot cues */
+  --color-type-pdf: #2457D6;
+  --color-type-pdf-soft: #E8F0FF;
+  --color-type-note: #B7791F;
+  --color-type-note-soft: #FEF8E7;
+  --color-type-web: #16805D;
+  --color-type-web-soft: #EAF6F1;
+  --color-type-ai: #2457D6;
+  --color-type-ai-soft: #E8F0FF;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+}
+
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --border: #e2e8f0;
-  --muted: #64748b;
-  --primary: #2563eb;
-  --primary-foreground: #ffffff;
+  --background: #F3F6FB;
+  --foreground: #17243B;
+
+  --sidebar: #EAF0F8;
+  --sidebar-foreground: #17243B;
+  --sidebar-border: #D8E1EE;
+  --sidebar-accent: #E8F0FF;
+
+  --card: #FFFFFF;
+  --card-foreground: #17243B;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #17243B;
+
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-secondary: #F7F9FD;
+  --surface-recessed: #F7F9FD;
+  --surface-sunken: #EDF2F9;
+
+  --border: #D8E1EE;
+  --border-strong: #C4D0E0;
+
+  --primary: #2457D6;
+  --primary-hover: #1947B8;
+  --primary-foreground: #FFFFFF;
+
+  --accent-blue: #2457D6;
+  --accent-blue-soft: #E8F0FF;
+  --accent-blue-tint: #D4E4FC;
+
+  --muted: #F7F9FD;
+  --muted-foreground: #5B6880;
+  --text-faint: #78869B;
+
+  --success: #16805D;
+  --success-tint: #EAF6F1;
+  --warning: #B7791F;
+  --warning-tint: #FEF8E7;
+  --destructive: #C43D4B;
+  --destructive-tint: #FDF2F2;
+
+  --fern: #2457D6;
+  --fern-deep: #1947B8;
+  --fern-tint: #E8F0FF;
+  --teal: #2457D6;
+  --teal-deep: #1947B8;
+  --teal-tint: #E8F0FF;
+  --sage: #5B6880;
+  --gold: #B7791F;
+  --clay: #C43D4B;
+
+  --excerpt-wash: #F7F9FD;
+  --best-match: rgba(36, 87, 214, 0.12);
+
+  /* Shadows */
+  --shadow-soft: 0 1px 3px rgba(23, 36, 59, 0.05);
+  --shadow-lift: 0 4px 12px rgba(23, 36, 59, 0.08);
+  --shadow-pop: 0 8px 24px rgba(23, 36, 59, 0.12);
+  --shadow-overlay: 0 16px 40px rgba(15, 23, 42, 0.22);
+
+  --radius: 6px;
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #F3F6FB;
+  color: #17243B;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: -0.011em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* Custom scrollbar for clean dashboard feel */
+/* Explicit surface styles to prevent transparency issues */
+.bg-popover {
+  background-color: #FFFFFF !important;
+}
+
+.bg-card {
+  background-color: #FFFFFF !important;
+}
+
+.bg-surface {
+  background-color: #FFFFFF !important;
+}
+
+.bg-surface-secondary {
+  background-color: #F7F9FD !important;
+}
+
+.bg-sidebar {
+  background-color: #EAF0F8 !important;
+}
+
+/* Standardized primary button */
+.btn-primary {
+  background-color: #2457D6 !important;
+  color: #FFFFFF !important;
+  font-weight: 600;
+  transition: all 150ms ease-out;
+}
+
+.btn-primary:hover {
+  background-color: #1947B8 !important;
+}
+
+.btn-primary:disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+}
+
+/* Standardized secondary button */
+.btn-secondary {
+  background-color: #FFFFFF !important;
+  color: #17243B !important;
+  border: 1px solid #D8E1EE !important;
+  font-weight: 500;
+  transition: all 150ms ease-out;
+}
+
+.btn-secondary:hover {
+  background-color: #F7F9FD !important;
+  border-color: #C4D0E0 !important;
+}
+
+/* Standardized destructive button */
+.btn-destructive {
+  background-color: #C43D4B !important;
+  color: #FFFFFF !important;
+  font-weight: 600;
+  transition: all 150ms ease-out;
+}
+
+.btn-destructive:hover {
+  background-color: #9F2C38 !important;
+}
+
+/* Card hover */
+.card-hover {
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.card-hover:hover {
+  border-color: #C4D0E0 !important;
+  box-shadow: 0 4px 12px rgba(23, 36, 59, 0.08);
+}
+
+.app-sidebar {
+  background-color: #EAF0F8 !important;
+  color: #17243B !important;
+  border-color: #D8E1EE !important;
+}
+
+.sidebar-menu-item {
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+
+.sidebar-menu-item:hover {
+  background-color: #DDE7F5 !important;
+  color: #17243B !important;
+}
+
+/* Hairline scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
+  background: #C4D0E0;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #78869B;
 }

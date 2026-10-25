@@ -1,14 +1,20 @@
-"""Database connection, session management, and Base definition."""
+﻿"""Database connection, session management, and Base definition."""
 
+import os
 from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from app.config import settings
 
-# Configure SQLite engine
+# Configure SQLite engine and ensure storage parent directory exists
 connect_args = {}
 if settings.database_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
+    db_file_path = settings.database_url.replace("sqlite:///", "")
+    if db_file_path and not db_file_path.startswith(":memory:"):
+        db_parent = os.path.dirname(db_file_path)
+        if db_parent:
+            os.makedirs(db_parent, exist_ok=True)
 
 engine = create_engine(
     settings.database_url,
@@ -47,4 +53,3 @@ def init_db() -> None:
             if "error_message" not in columns:
                 conn.execute(text("ALTER TABLE files ADD COLUMN error_message TEXT"))
                 conn.commit()
-

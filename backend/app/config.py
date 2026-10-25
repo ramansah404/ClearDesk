@@ -1,10 +1,12 @@
-"""ClearDesk Application Configuration.
+﻿"""ClearDesk Application Configuration.
 
 Loads settings from environment variables and .env file.
+Supports automatic persistent-disk detection (e.g. /var/data on Render).
 """
 
-from typing import List, Union
-from pydantic import field_validator
+import os
+from typing import List, Optional, Union
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,13 +28,15 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     cors_origins: Union[List[str], str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    cors_origin_regex: Optional[str] = None
 
     # Google Gemini API
     gemini_api_key: str = ""
-    llm_model: str = "gemini-2.5-flash"
-    embed_model: str = "text-embedding-004"
+    llm_model: str = "gemini-3.5-flash-lite"
+    embed_model: str = "gemini-embedding-001"
 
-    # Database and Storage
+    # Persistent Storage Paths
+    data_dir: Optional[str] = None
     database_url: str = "sqlite:///./cleardesk.db"
     chroma_dir: str = "./chroma_data"
     storage_dir: str = "./storage"
@@ -47,7 +51,6 @@ class Settings(BaseSettings):
         """Parse comma-separated string of origins into a list."""
         if isinstance(value, str):
             if value.startswith("[") and value.endswith("]"):
-                # JSON-formatted list
                 import json
                 try:
                     return json.loads(value)
@@ -55,6 +58,24 @@ class Settings(BaseSettings):
                     pass
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
+
+    @model_validator(mode="after")
+    def resolve_persistent_paths(self) -> "Settings":
+        """Automatically resolve persistent paths if DATA_DIR is set or /var/data exists."""
+        effective_data_dir = self.data_dir
+        if not effective_data_dir and os.path.exists("/var/data") and os.path.isdir("/var/data"):
+            effective_data_dir = "/var/data"
+
+        if effective_data_dir:
+            clean_dir = effective_data_dir.rstrip("/\\")
+            if self.database_url == "sqlite:///./cleardesk.db":
+                self.database_url = f"sqlite:///{clean_dir}/cleardesk.db"
+            if self.chroma_dir == "./chroma_data":
+                self.chroma_dir = f"{clean_dir}/chroma_data"
+            if self.storage_dir == "./storage":
+                self.storage_dir = f"{clean_dir}/storage"
+
+        return self
 
 
 settings = Settings()

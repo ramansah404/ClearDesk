@@ -1,4 +1,4 @@
-"""ClearDesk FastAPI Main Application.
+﻿"""ClearDesk FastAPI Main Application.
 
 Configures CORS, lifespan events, structured error handlers, and core health checks.
 """
@@ -134,8 +134,14 @@ def get_health(db: Session = Depends(get_db)) -> HealthResponse:
     )
 
 
-from app.routers import files  # noqa: E402
+from app.routers import files, ask, notes, actions, exam, quiz, export  # noqa: E402
 app.include_router(files.router)
+app.include_router(ask.router)
+app.include_router(notes.router)
+app.include_router(actions.router)
+app.include_router(exam.router)
+app.include_router(quiz.router)
+app.include_router(export.router)
 
 
 @app.get("/", tags=["System"])
@@ -148,4 +154,5 @@ def root() -> dict:
         "docs": "/docs",
         "health": "/health",
     }
+
 

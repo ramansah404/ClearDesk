@@ -1,0 +1,54 @@
+﻿services:
+  # ========================================================
+  # ClearDesk Backend API (FastAPI + ChromaDB + SQLite)
+  # ========================================================
+  - type: web
+    name: cleardesk-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    region: oregon
+    healthCheckPath: /health
+    disk:
+      name: cleardesk-data
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: gemini-3.5-flash-lite
+      - key: EMBED_MODEL
+        value: gemini-embedding-001
+      - key: DATA_DIR
+        value: /var/data
+      - key: DATABASE_URL
+        value: sqlite:////var/data/cleardesk.db
+      - key: STORAGE_DIR
+        value: /var/data/storage
+      - key: CHROMA_DIR
+        value: /var/data/chroma_data
+      - key: CORS_ORIGIN_REGEX
+        value: "https://.*\\.onrender\\.com"
+      - key: CORS_ORIGINS
+        value: "http://localhost:3000"
+
+  # ========================================================
+  # ClearDesk Frontend Web Service (Next.js 16)
+  # ========================================================
+  - type: web
+    name: cleardesk-frontend
+    runtime: node
+    rootDir: frontend
+    plan: starter
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NEXT_PUBLIC_API_URL
+        sync: false

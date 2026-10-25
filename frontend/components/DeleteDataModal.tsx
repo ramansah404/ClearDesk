@@ -3,24 +3,34 @@
 import React, { useState } from "react";
 import { Trash2, AlertTriangle, X, Check } from "lucide-react";
 import { resetWorkspaceData } from "@/lib/workspace";
+import { deleteWorkspace } from "@/lib/api";
 
 interface DeleteDataModalProps {
   isOpen: boolean;
   onClose: () => void;
   onDeleted: (newWorkspaceId: string) => void;
+  workspaceId: string;
 }
 
-export function DeleteDataModal({ isOpen, onClose, onDeleted }: DeleteDataModalProps) {
+export function DeleteDataModal({
+  isOpen,
+  onClose,
+  onDeleted,
+  workspaceId,
+}: DeleteDataModalProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleDelete = async () => {
     setIsDeleting(true);
+    setError(null);
     try {
-      // In Phase 0, we reset the client workspace session and localStorage.
-      // In Phase 1+, this will call DELETE /workspace on the backend.
+      if (workspaceId) {
+        await deleteWorkspace(workspaceId);
+      }
       const newId = resetWorkspaceData();
       setSuccess(true);
       setTimeout(() => {
@@ -28,57 +38,62 @@ export function DeleteDataModal({ isOpen, onClose, onDeleted }: DeleteDataModalP
         setIsDeleting(false);
         onDeleted(newId);
         onClose();
-      }, 1000);
-    } catch {
+      }, 900);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to delete workspace data.";
+      setError(msg);
       setIsDeleting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-start justify-between pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-2 text-rose-600">
-            <AlertTriangle className="h-5 w-5" />
-            <h3 className="font-semibold text-slate-900">Delete Workspace Data</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+      <div className="w-full max-w-md rounded-[6px] bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,0.22)] border border-[#D8E1EE] animate-in fade-in zoom-in-95 duration-100">
+        <div className="flex items-center justify-between pb-3 border-b border-[#D8E1EE]">
+          <div className="flex items-center gap-2 text-[#C43D4B]">
+            <AlertTriangle className="h-4 w-4" />
+            <h3 className="text-sm font-semibold text-[#17243B]">Reset Workspace Data</h3>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 rounded-md p-1 transition"
+            className="text-[#5B6880] hover:text-[#17243B] hover:bg-[#F7F9FD] rounded-[4px] p-1 transition cursor-pointer"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
+        {error && (
+          <div className="mt-3 rounded-[6px] bg-[#FDF2F2] p-2.5 text-xs text-[#C43D4B] border border-[#C43D4B]/30">
+            {error}
+          </div>
+        )}
+
         {success ? (
-          <div className="py-6 text-center text-emerald-600 space-y-2">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 mb-1">
-              <Check className="h-6 w-6" />
+          <div className="py-6 text-center text-[#16805D] space-y-2">
+            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#EAF6F1] text-[#16805D] mb-1">
+              <Check className="h-5 w-5" />
             </div>
-            <p className="font-medium">Data wiped successfully!</p>
-            <p className="text-sm text-slate-500">Your workspace has been cleanly reset.</p>
+            <p className="text-sm font-semibold text-[#17243B]">Workspace Reset</p>
+            <p className="text-xs text-[#5B6880]">All local documents, vectors, and tables wiped cleanly.</p>
           </div>
         ) : (
           <>
-            <div className="py-4 space-y-3 text-sm text-slate-600 leading-relaxed">
-              <p>
-                Are you sure you want to permanently erase all workspace documents, notes, questions, and action items?
+            <div className="py-3.5 space-y-3 text-xs text-[#5B6880] leading-relaxed">
+              <p className="text-[#17243B] font-medium">
+                Are you sure you want to permanently erase this workspace? This action purges all uploaded documents, notes, extracted actions, exam plans, and quizzes.
               </p>
-              <div className="rounded-lg bg-amber-50 p-3 border border-amber-200/60 text-amber-800 text-xs flex gap-2">
-                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
-                <span>
-                  <strong>Privacy Promise</strong>: ClearDesk does not train on your files. Deleting your workspace purges all SQLite metadata, vector embeddings, and uploaded files.
-                </span>
+              <div className="rounded-[6px] bg-[#F7F9FD] p-3 border border-[#D8E1EE] text-[#5B6880] text-[11.5px] leading-normal">
+                <span className="font-semibold text-[#17243B]">Privacy Guarantee:</span> Your documents are never used for model training. Resetting purges all SQLite metadata, vector embeddings in ChromaDB, and stored files on disk.
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#D8E1EE]">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isDeleting}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                className="px-3.5 py-1.5 text-xs font-medium text-[#17243B] bg-white hover:bg-[#F7F9FD] rounded-[6px] border border-[#D8E1EE] shadow-xs transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -86,10 +101,10 @@ export function DeleteDataModal({ isOpen, onClose, onDeleted }: DeleteDataModalP
                 type="button"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 rounded-lg shadow-xs transition disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-[#C43D4B] hover:bg-[#9F2C38] rounded-[6px] shadow-xs transition cursor-pointer disabled:opacity-50"
               >
-                <Trash2 className="h-4 w-4" />
-                {isDeleting ? "Wiping Data..." : "Delete All Data"}
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>{isDeleting ? "Wiping Data..." : "Erase All Data"}</span>
               </button>
             </div>
           </>

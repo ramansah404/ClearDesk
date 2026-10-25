@@ -9,6 +9,7 @@ import uuid
 from typing import List, Optional
 
 from fastapi import (
+    Query,
     APIRouter,
     Depends,
     File as FastAPIFile,
@@ -47,14 +48,16 @@ MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB limit
 
 def get_current_workspace(
     x_workspace_id: Optional[str] = Header(None, alias="X-Workspace-Id"),
+    workspace_id: Optional[str] = Query(None, alias="workspace_id"),
     db: Session = Depends(get_db),
 ) -> str:
     """Validate or create workspace session ensuring strict workspace isolation."""
-    if not x_workspace_id or not x_workspace_id.strip():
+    raw_id = x_workspace_id or workspace_id
+    if not raw_id or not raw_id.strip():
         # Generate default session ID if client sent none
-        x_workspace_id = str(uuid.uuid4())
+        raw_id = str(uuid.uuid4())
 
-    ws_id = x_workspace_id.strip()
+    ws_id = raw_id.strip()
     ws = db.query(Workspace).filter(Workspace.id == ws_id).first()
     if not ws:
         ws = Workspace(id=ws_id)

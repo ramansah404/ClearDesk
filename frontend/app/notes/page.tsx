@@ -1,164 +1,424 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
-  BookOpen,
+  StickyNote,
   FileDown,
   Layers,
   ChevronDown,
   ChevronUp,
   Globe,
-  Clock,
+  Loader2,
+  FileText,
+  RotateCcw,
+  AlertCircle,
   Sparkles,
   Info,
+  Check,
+  ArrowRight,
+  ExternalLink,
+  ChevronRight,
 } from "lucide-react";
+import Link from "next/link";
+import { useToast } from "@/components/Toast";
+
+import {
+  fetchFiles,
+  FileItem,
+  fetchNotes,
+  regenerateNotes,
+  getRevisionSheetUrl,
+  NotesResponse,
+  NoteSection,
+  API_BASE_URL,
+} from "@/lib/api";
+import {
+  getOrCreateWorkspaceId,
+  getSavedLanguage,
+  saveLanguage,
+  LanguageCode,
+  LANGUAGES,
+} from "@/lib/workspace";
 
 export default function NotesPage() {
-  const [activeLang, setActiveLang] = useState<"en" | "hi" | "te">("en");
-  const [expandedSection, setExpandedSection] = useState<number | null>(1);
+  const { showToast } = useToast();
+  const [workspaceId, setWorkspaceId] = useState<string>("");
+  const [activeLang, setActiveLang] = useState<LanguageCode>("en");
+
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const [selectedFileId, setSelectedFileId] = useState<string>("");
+  const [loadingFiles, setLoadingFiles] = useState<boolean>(true);
+
+  const [notesData, setNotesData] = useState<NotesResponse | null>(null);
+  const [loadingNotes, setLoadingNotes] = useState<boolean>(false);
+  const [regenerating, setRegenerating] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Map of sectionId -> expanded (for Level 3 explanations)
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const ws = getOrCreateWorkspaceId();
+    setWorkspaceId(ws);
+    const savedLang = getSavedLanguage();
+    setActiveLang(savedLang);
+    loadReadyFiles(ws);
+  }, []);
+
+  const loadReadyFiles = async (ws: string) => {
+    setLoadingFiles(true);
+    const res = await fetchFiles(ws);
+    if (res.ok && res.data) {
+      const ready = res.data.filter((f) => f.status === "ready");
+      setFiles(ready);
+      if (ready.length > 0) {
+        setSelectedFileId(ready[0].id);
+      }
+    }
+    setLoadingFiles(false);
+  };
+
+  const loadNotesForFile = useCallback(
+    async (fileId: string, ws: string, lang: LanguageCode) => {
+      if (!fileId || !ws) return;
+      setLoadingNotes(true);
+      setErrorMessage(null);
+
+      const res = await fetchNotes(fileId, ws, lang);
+      if (res.ok && res.data) {
+        setNotesData(res.data);
+        const exp: Record<string, boolean> = {};
+        res.data.sections.forEach((s) => {
+          exp[s.id] = true;
+        });
+        setExpandedSections(exp);
+      } else {
+        setErrorMessage(res.error || "Failed to load notes for this document.");
+        setNotesData(null);
+      }
+      setLoadingNotes(false);
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (selectedFileId && workspaceId) {
+      loadNotesForFile(selectedFileId, workspaceId, activeLang);
+    }
+  }, [selectedFileId, workspaceId, activeLang, loadNotesForFile]);
+
+  // Handle language switch
+  const handleLanguageChange = (lang: LanguageCode) => {
+    setActiveLang(lang);
+    saveLanguage(lang);
+    const langName = LANGUAGES.find((l) => l.code === lang)?.label || lang;
+    showToast(`Switched notes language to ${langName}.`, "info");
+  };
+
+  // Handle manual regenerate
+  const handleRegenerate = async () => {
+    if (!selectedFileId || regenerating || loadingNotes) return;
+    setRegenerating(true);
+    setErrorMessage(null);
+
+    const res = await regenerateNotes(selectedFileId, workspaceId, activeLang);
+    if (res.ok && res.data) {
+      setNotesData(res.data);
+      const exp: Record<string, boolean> = {};
+      res.data.sections.forEach((s) => {
+        exp[s.id] = true;
+      });
+      setExpandedSections(exp);
+      showToast("Notes regenerated successfully!", "success");
+    } else {
+      const errMsg = res.error || "Failed to regenerate notes.";
+      setErrorMessage(errMsg);
+      showToast(errMsg, "error");
+    }
+    setRegenerating(false);
+  };
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+  };
+
+  const toggleAll = (expand: boolean) => {
+    if (!notesData) return;
+    const next: Record<string, boolean> = {};
+    notesData.sections.forEach((s) => {
+      next[s.id] = expand;
+    });
+    setExpandedSections(next);
+  };
+
+  const readyFiles = files.filter((f) => f.status === "ready");
+  const selectedFile = readyFiles.find((f) => f.id === selectedFileId);
 
   return (
-    <div className="space-y-6">
-      {/* Header with Language & Export Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
+    <div className="flex flex-col flex-1 min-h-0 px-4 md:px-6 py-6 max-w-5xl w-full mx-auto space-y-6">
+      {/* Header with Title and Global Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#D8E1EE] pb-4 shrink-0">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900">
-            3-Level Keyword Notes
-          </h2>
-          <p className="text-sm text-slate-500">
-            Keyword-first structured summaries with mother-tongue mode and technical terms in English.
+          <div className="flex items-center gap-2 mb-1">
+            <span aria-hidden className="h-3.5 w-[3px] rounded-full bg-[#B7791F]" />
+            <h1 className="text-2xl font-bold tracking-tight text-[#17243B]">
+              3-Level Structured Notes
+            </h1>
+          </div>
+          <p className="text-xs md:text-sm text-[#5B6880]">
+            Progressive cognitive hierarchy: Level 1 Keywords, Level 2 Core Meaning, and Level 3 Deep Principles. Technical terms remain in English across all translations.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Language Selector */}
-          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-2xs">
-            {(["en", "hi", "te"] as const).map((lang) => (
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Language Switcher Segment Control */}
+          <div className="inline-flex rounded-[6px] border border-[#D8E1EE] bg-white p-0.5 shadow-xs">
+            {LANGUAGES.map((lang) => (
               <button
-                key={lang}
-                onClick={() => setActiveLang(lang)}
-                className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-                  activeLang === lang
-                    ? "bg-blue-600 text-white shadow-2xs"
-                    : "text-slate-600 hover:text-slate-900"
+                key={lang.code}
+                onClick={() => handleLanguageChange(lang.code)}
+                className={`flex items-center gap-1 rounded-[4px] px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
+                  activeLang === lang.code
+                    ? "bg-[#2457D6] text-white font-semibold"
+                    : "text-[#5B6880] hover:text-[#17243B] hover:bg-[#F7F9FD]"
                 }`}
               >
-                {lang === "en" ? "English" : lang === "hi" ? "हिन्दी" : "తెలుగు"}
+                <span>{lang.native}</span>
+                {activeLang === lang.code && <Check className="h-3 w-3" />}
               </button>
             ))}
           </div>
 
-          {/* Export Revision Sheet Placeholder */}
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition"
-          >
-            <FileDown className="h-4 w-4 text-slate-500" />
-            <span>Export 1-Page PDF</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Interactive 3-Level Notes Preview Card */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <Layers className="h-4 w-4 text-blue-600" />
-            <h3 className="font-semibold text-slate-900 text-sm">
-              Lecture Section 1: Introduction to Gradient Descent & Optimization
-            </h3>
-          </div>
-          <span className="text-xs text-slate-500 font-mono">Pages 1–4</span>
-        </div>
-
-        <div className="p-6 space-y-5">
-          {/* Level 1: Keywords */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-[10px]">
-                  1
-                </span>
-                Level 1: Key Terms (Keywords)
-              </span>
-              <span className="text-[11px] text-slate-400">Ranked by importance</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {[
-                "Gradient Descent",
-                "Learning Rate (α)",
-                "Loss Function",
-                "Local Minima",
-                "Convex Optimization",
-                "Backpropagation",
-              ].map((keyword) => (
-                <span
-                  key={keyword}
-                  className="rounded-lg bg-blue-50 px-3 py-1 text-xs font-medium text-blue-800 border border-blue-200/60"
-                >
-                  {keyword}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Level 2: One-Line Meaning */}
-          <div className="rounded-xl bg-slate-50 p-4 border border-slate-200/80">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5 mb-1.5">
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[10px]">
-                2
-              </span>
-              Level 2: One-Line Meaning
-            </span>
-            <p className="text-sm font-medium text-slate-800 leading-relaxed">
-              {activeLang === "hi"
-                ? "Gradient Descent एक iterative optimization algorithm है जो Loss Function को minimize करने के लिए parameters को adjust करता है।"
-                : activeLang === "te"
-                ? "Gradient Descent అనేది Loss Function ను తగ్గించడానికి parameters ను దశలవారీగా సర్దుబాటు చేసే optimization algorithm."
-                : "An iterative optimization algorithm that updates model parameters in the direction of steepest descent to minimize the loss function."}
-            </p>
-          </div>
-
-          {/* Level 3: Full Explanation (Expandable) */}
-          <div className="rounded-xl border border-slate-200">
+          {/* Regenerate Button */}
+          {selectedFileId && (
             <button
-              onClick={() => setExpandedSection(expandedSection === 1 ? null : 1)}
-              className="flex w-full items-center justify-between p-4 text-left hover:bg-slate-50 transition rounded-xl"
+              type="button"
+              onClick={handleRegenerate}
+              disabled={regenerating || loadingNotes}
+              className="inline-flex items-center gap-1.5 rounded-[6px] border border-[#D8E1EE] bg-white px-2.5 py-1.5 text-xs font-medium text-[#17243B] shadow-xs hover:bg-[#F7F9FD] transition cursor-pointer disabled:opacity-50"
+              title="Re-extract and regenerate 3-level notes"
             >
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-[10px]">
-                  3
-                </span>
-                Level 3: Full Simple Explanation
-              </span>
-              {expandedSection === 1 ? (
-                <ChevronUp className="h-4 w-4 text-slate-400" />
-              ) : (
-                <ChevronDown className="h-4 w-4 text-slate-400" />
-              )}
+              <RotateCcw
+                className={`h-3.5 w-3.5 text-[#5B6880] ${
+                  regenerating ? "animate-spin text-[#2457D6]" : ""
+                }`}
+              />
+              <span>{regenerating ? "Regenerating..." : "Regenerate"}</span>
             </button>
+          )}
 
-            {expandedSection === 1 && (
-              <div className="px-4 pb-4 text-xs md:text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3">
-                {activeLang === "hi"
-                  ? "कल्पना कीजिए कि आप कोहरे में एक पहाड़ी से नीचे उतर रहे हैं। आप हर कदम पर सबसे ढलान वाली दिशा में आगे बढ़ते हैं। Gradient Descent भी ठीक इसी तरह काम करता है: यह current error का derivative (ढलान) निकालता है और parameters को optimal solution की ओर ले जाता है। Technical terms को अंग्रेजी में ही रखा जाता है ताकि परीक्षा की तैयारी में कोई भ्रम न रहे।"
-                  : activeLang === "te"
-                  ? "మంచుతో కప్పబడిన కొండపై నుండి లోయలోకి దిగడం ఊహించుకోండి. మీరు ప్రతి అడుగులో అత్యంత వాలుగా ఉన్న దిశలో కదులుతారు. Gradient Descent కూడా అలాగే పనిచేస్తుంది: ఇది current error యొక్క gradient ను లెక్కిస్తుంది మరియు మోడల్‌ను సరైన దిశలో నడిపిస్తుంది."
-                  : "Imagine hiking down a foggy mountain toward a valley. At each step, you feel the slope and move in the steepest downward direction. Gradient Descent computes the partial derivative (slope) of the loss function with respect to weights and takes steps proportional to the learning rate until converging at a minimum."}
-              </div>
-            )}
+          {/* Export 1-Page PDF */}
+          {selectedFileId ? (
+            <a
+              href={getRevisionSheetUrl(selectedFileId, workspaceId)}
+              download={`revision_sheet_${selectedFileId.slice(0, 8)}.pdf`}
+              onClick={() => {
+                showToast("Downloading single-page revision sheet...", "info");
+              }}
+              className="inline-flex items-center gap-1.5 rounded-[6px] bg-[#2457D6] hover:bg-[#1947B8] text-white px-3.5 py-1.5 text-xs font-semibold shadow-sm transition cursor-pointer"
+              title="Download guaranteed 1-page A4 PDF revision sheet"
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              <span>Export 1-Page PDF</span>
+            </a>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center gap-1.5 rounded-[6px] border border-[#D8E1EE] bg-white px-3 py-1.5 text-xs font-medium text-[#78869B] opacity-60 cursor-not-allowed"
+            >
+              <FileDown className="h-3.5 w-3.5 text-[#78869B]" />
+              <span>Export 1-Page PDF</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Active Document Selector Bar */}
+      {readyFiles.length > 0 ? (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[6px] border border-[#D8E1EE] bg-white px-4 py-2.5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-[#5B6880]">
+              Reading Source:
+            </span>
+            <select
+              value={selectedFileId}
+              onChange={(e) => setSelectedFileId(e.target.value)}
+              className="rounded-[6px] border border-[#D8E1EE] bg-white py-1 pl-2.5 pr-8 text-xs font-medium text-[#17243B] focus:border-[#2457D6] focus:outline-none cursor-pointer"
+            >
+              {readyFiles.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name} ({f.page_count} {f.page_count === 1 ? "page" : "pages"})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {notesData && notesData.sections.length > 0 && (
+            <div className="flex items-center gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => toggleAll(true)}
+                className="text-[#5B6880] hover:text-[#17243B] font-medium transition cursor-pointer"
+              >
+                Expand all
+              </button>
+              <span className="text-[#C4D0E0]">•</span>
+              <button
+                type="button"
+                onClick={() => toggleAll(false)}
+                className="text-[#5B6880] hover:text-[#17243B] font-medium transition cursor-pointer"
+              >
+                Collapse all
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        !loadingFiles && (
+          <div className="rounded-[6px] border border-[#B7791F]/30 bg-[#FEF8E7] p-4 flex items-start gap-3 text-xs text-[#17243B]">
+            <AlertCircle className="h-4 w-4 text-[#B7791F] shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold text-[#17243B]">
+                No indexed documents in this workspace yet
+              </p>
+              <p className="text-[#5B6880]">
+                Upload lecture slides, syllabus, or course notes first to automatically generate 3-level keyword notes.
+              </p>
+              <Link
+                href="/upload"
+                className="inline-flex items-center gap-1 font-semibold text-[#2457D6] hover:underline pt-1"
+              >
+                <span>Go to Document Sources</span>
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+        )
+      )}
+
+      {/* Mother-Tongue Mode Indicator */}
+      {activeLang !== "en" && (
+        <div className="rounded-[6px] border border-[#2457D6]/20 bg-[#E8F0FF] p-3 flex items-start gap-2.5 text-xs text-[#17243B]">
+          <Globe className="h-4 w-4 text-[#2457D6] shrink-0 mt-0.5" />
+          <div className="leading-relaxed">
+            <span className="font-semibold text-[#2457D6]">Mother-Tongue Reading Mode Active: </span>
+            Explanations are translated into {LANGUAGES.find((l) => l.code === activeLang)?.label || activeLang}. All technical terms, formulas, code snippets, and proper nouns are strictly preserved in English to prevent academic ambiguity.
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Phase 0 Notice */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 text-xs text-slate-600 flex items-start gap-3">
-        <Info className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
-        <div>
-          <span className="font-semibold text-slate-900">Phase 0 Status: </span>
-          The `Note` ORM model and SQLite tables are ready. Dynamic 3-level summarization and multilingual translation prompts (`notes_section.txt`, `translate_notes.txt`) will be wired up in <strong>Phase 3: Notes & Languages</strong>.
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="rounded-[6px] border border-[#C43D4B]/30 bg-[#FDF2F2] p-3 text-xs text-[#C43D4B] flex items-start gap-2.5">
+          <AlertCircle className="h-4 w-4 text-[#C43D4B] shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span className="font-semibold">Error loading notes: </span>
+            {errorMessage}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Loading State */}
+      {loadingNotes ? (
+        <div className="py-20 text-center space-y-3 rounded-[6px] border border-[#D8E1EE] bg-white shadow-sm">
+          <Loader2 className="h-8 w-8 text-[#2457D6] animate-spin mx-auto" />
+          <p className="text-xs font-medium text-[#17243B]">
+            Extracting 3-level cognitive hierarchy...
+          </p>
+          <p className="text-[11px] text-[#5B6880]">
+            Preserving exact technical terms while distilling Level 1 keywords and Level 2 definitions.
+          </p>
+        </div>
+      ) : notesData && notesData.sections.length > 0 ? (
+        /* Notes Section List */
+        <div className="space-y-4">
+          {notesData.sections.map((section: NoteSection, idx: number) => {
+            const isExpanded = expandedSections[section.id] ?? true;
+            const pagesText = section.source_pages && section.source_pages.length > 0
+              ? section.source_pages.join(", ")
+              : String(idx + 1);
+
+            return (
+              <div
+                key={section.id || idx}
+                className="rounded-[6px] border border-[#D8E1EE] bg-white p-4.5 space-y-3.5 shadow-sm hover:border-[#C4D0E0] transition"
+              >
+                {/* Section Header */}
+                <div className="flex items-start justify-between gap-3 border-b border-[#D8E1EE] pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-[4px] border border-[#B7791F]/30 bg-[#FEF8E7] text-[#B7791F] px-2 py-0.5 text-[10px] font-mono font-bold">
+                      p. {pagesText}
+                    </span>
+                    <h3 className="text-sm font-semibold text-[#17243B] tracking-tight">
+                      {section.section_title || `Section ${idx + 1}`}
+                    </h3>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(section.id)}
+                    className="text-[#5B6880] hover:text-[#17243B] p-1 rounded-[4px] transition cursor-pointer"
+                    title={isExpanded ? "Collapse Level 3" : "Expand Level 3"}
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Level 1: Keywords */}
+                {section.level1_keywords && section.level1_keywords.length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#78869B]">
+                      Level 1 • Key Terms & Anchors
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {section.level1_keywords.map((kw: string, i: number) => (
+                        <span
+                          key={i}
+                          className="rounded-[4px] border border-[#D4E4FC] bg-[#E8F0FF] px-2 py-0.5 text-[11px] font-mono text-[#2457D6] font-medium shadow-xs"
+                        >
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Level 2: Core Meaning */}
+                {section.level2_meaning && (
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#78869B]">
+                      Level 2 • Core Meaning & Definitions
+                    </span>
+                    <div className="rounded-[6px] border border-[#D8E1EE] bg-[#F7F9FD] p-3 text-xs text-[#17243B] font-medium leading-relaxed">
+                      {section.level2_meaning}
+                    </div>
+                  </div>
+                )}
+
+                {/* Level 3: Deep Principle (Collapsible) */}
+                {isExpanded && section.level3_explanation && (
+                  <div className="space-y-1.5 pt-2 border-t border-[#D8E1EE]">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#78869B]">
+                      Level 3 • Deep Mechanism & Context
+                    </span>
+                    <div className="text-xs text-[#5B6880] leading-relaxed whitespace-pre-wrap">
+                      {section.level3_explanation}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

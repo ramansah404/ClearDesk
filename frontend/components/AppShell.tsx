@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { Navbar } from "@/components/Navbar";
 import { DeleteDataModal } from "@/components/DeleteDataModal";
+import { ToastProvider } from "@/components/Toast";
 import {
   getOrCreateWorkspaceId,
   getSavedLanguage,
@@ -15,6 +17,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [workspaceId, setWorkspaceId] = useState("");
@@ -27,39 +30,36 @@ export function AppShell({ children }: AppShellProps) {
 
   const handleDeleted = (newWorkspaceId: string) => {
     setWorkspaceId(newWorkspaceId);
-    // Optionally trigger a page reload or state reset
-    window.location.reload();
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900">
-      {/* Left Sidebar */}
-      <Sidebar
-        mobileOpen={mobileSidebarOpen}
-        onCloseMobile={() => setMobileSidebarOpen(false)}
-      />
-
-      {/* Main Content Area */}
-      <div className="flex flex-1 flex-col overflow-x-hidden">
-        <Navbar
-          currentLanguage={language}
-          onLanguageChange={setLanguage}
+    <ToastProvider>
+      <div className="flex h-screen overflow-hidden bg-[#F3F6FB] text-[#17243B]">
+        <Sidebar
+          mobileOpen={mobileSidebarOpen}
+          onCloseMobile={() => setMobileSidebarOpen(false)}
           onOpenDeleteModal={() => setDeleteModalOpen(true)}
-          onToggleMobileSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-          workspaceId={workspaceId}
         />
-
-        <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
-          {children}
-        </main>
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#F3F6FB]">
+          <Navbar
+            currentLanguage={language}
+            onLanguageChange={setLanguage}
+            onOpenDeleteModal={() => setDeleteModalOpen(true)}
+            onToggleMobileSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            workspaceId={workspaceId}
+          />
+          <main className="flex-1 min-h-0 overflow-y-auto flex flex-col bg-[#F3F6FB]">
+            {children}
+          </main>
+        </div>
       </div>
 
-      {/* Privacy / Delete Modal */}
       <DeleteDataModal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
+        workspaceId={workspaceId}
         onDeleted={handleDeleted}
       />
-    </div>
+    </ToastProvider>
   );
 }

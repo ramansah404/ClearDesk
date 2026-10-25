@@ -57,7 +57,8 @@ def generate_embeddings(texts: List[str]) -> List[List[float]]:
     except Exception as exc:
         raise ValueError(f"Failed to initialize Google GenAI client: {exc}") from exc
 
-    model_name = settings.embed_model.strip() or "text-embedding-004"
+    model_name = settings.embed_model.strip() or "gemini-embedding-001"
+
     embeddings: List[List[float]] = []
     batch_size = 20
 
