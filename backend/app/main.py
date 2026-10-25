@@ -1,4 +1,4 @@
-﻿"""ClearDesk FastAPI Main Application.
+"""ClearDesk FastAPI Main Application.
 
 Configures CORS, lifespan events, structured error handlers, and core health checks.
 """

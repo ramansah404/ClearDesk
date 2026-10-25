@@ -1,4 +1,4 @@
-﻿"""ClearDesk Application Configuration.
+"""ClearDesk Application Configuration.
 
 Loads settings from environment variables and .env file.
 Supports automatic persistent-disk detection (e.g. /var/data on Render).

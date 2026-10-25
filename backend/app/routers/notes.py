@@ -31,16 +31,18 @@ router = APIRouter(tags=["Notes"])
 )
 def get_notes(
     file_id: str,
-    lang: Optional[str] = Query("en", description="Language code: 'en' (English), 'hi' (Hindi), or 'te' (Telugu)"),
+    lang: Optional[str] = Query(None, description="Language code: 'en' (English), 'hi' (Hindi), or 'te' (Telugu)"),
+    language: Optional[str] = Query(None, description="Alias for lang parameter"),
     workspace_id: str = Depends(get_current_workspace),
     db: Session = Depends(get_db),
 ) -> NotesResponse:
     """Retrieve 3-level notes for an uploaded document."""
+    effective_lang = lang or language or "en"
     try:
         notes_res = get_or_generate_notes(
             file_id=file_id,
             workspace_id=workspace_id,
-            language=lang or "en",
+            language=effective_lang,
             force_regenerate=False,
             db=db,
         )
@@ -87,16 +89,18 @@ def get_notes(
 )
 def regenerate_notes(
     file_id: str,
-    lang: Optional[str] = Query("en", description="Target language: en, hi, te"),
+    lang: Optional[str] = Query(None, description="Target language: en, hi, te"),
+    language: Optional[str] = Query(None, description="Alias for lang parameter"),
     workspace_id: str = Depends(get_current_workspace),
     db: Session = Depends(get_db),
 ) -> NotesResponse:
     """Force re-generate 3-level notes for a document."""
+    effective_lang = lang or language or "en"
     try:
         notes_res = get_or_generate_notes(
             file_id=file_id,
             workspace_id=workspace_id,
-            language=lang or "en",
+            language=effective_lang,
             force_regenerate=True,
             db=db,
         )
@@ -125,5 +129,5 @@ def regenerate_notes(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected notes error: {str(exc)}",
+            detail=f"Unexpected notes regeneration error: {str(exc)}",
         ) from exc

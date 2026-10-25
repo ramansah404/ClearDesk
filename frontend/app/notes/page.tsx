@@ -57,26 +57,48 @@ export default function NotesPage() {
   // Map of sectionId -> expanded (for Level 3 explanations)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
+  const [hasProcessingFiles, setHasProcessingFiles] = useState<boolean>(false);
+
+  const loadReadyFiles = useCallback(async (ws: string, showLoading = true) => {
+    if (!ws) return [];
+    if (showLoading) setLoadingFiles(true);
+    const res = await fetchFiles(ws);
+    let allFiles: FileItem[] = [];
+    if (res.ok && res.data) {
+      allFiles = res.data;
+      const ready = allFiles.filter((f) => f.status === "ready");
+      setFiles(ready);
+      setSelectedFileId((prev) => {
+        if (prev && ready.some((f) => f.id === prev)) return prev;
+        return ready.length > 0 ? ready[0].id : "";
+      });
+    }
+    if (showLoading) setLoadingFiles(false);
+    return allFiles;
+  }, []);
+
   useEffect(() => {
     const ws = getOrCreateWorkspaceId();
     setWorkspaceId(ws);
     const savedLang = getSavedLanguage();
     setActiveLang(savedLang);
-    loadReadyFiles(ws);
-  }, []);
+    loadReadyFiles(ws, true).then((all) => {
+      setHasProcessingFiles(all.some((f) => f.status === "processing"));
+    });
+  }, [loadReadyFiles]);
 
-  const loadReadyFiles = async (ws: string) => {
-    setLoadingFiles(true);
-    const res = await fetchFiles(ws);
-    if (res.ok && res.data) {
-      const ready = res.data.filter((f) => f.status === "ready");
-      setFiles(ready);
-      if (ready.length > 0) {
-        setSelectedFileId(ready[0].id);
-      }
-    }
-    setLoadingFiles(false);
-  };
+  // Background polling for files in processing state
+  useEffect(() => {
+    if (!workspaceId || !hasProcessingFiles) return;
+
+    const timer = setInterval(() => {
+      loadReadyFiles(workspaceId, false).then((all) => {
+        setHasProcessingFiles(all.some((f) => f.status === "processing"));
+      });
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, [workspaceId, hasProcessingFiles, loadReadyFiles]);
 
   const loadNotesForFile = useCallback(
     async (fileId: string, ws: string, lang: LanguageCode) => {
@@ -422,3 +444,4 @@ export default function NotesPage() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-﻿"""Database connection, session management, and Base definition."""
+"""Database connection, session management, and Base definition."""
 
 import os
 from typing import Generator

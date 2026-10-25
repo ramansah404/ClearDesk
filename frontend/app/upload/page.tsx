@@ -67,21 +67,22 @@ export default function UploadPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const ws = getOrCreateWorkspaceId();
-    setWorkspaceId(ws);
-    loadFiles(ws);
-  }, []);
-
-  const loadFiles = useCallback(async (ws: string) => {
+  const loadFiles = useCallback(async (ws: string, isInitial = false) => {
     if (!ws) return;
     const result = await fetchFiles(ws);
     if (result.ok && result.data) {
       setFiles(result.data);
-    } else {
+      if (isInitial) setErrorMessage(null);
+    } else if (isInitial) {
       setErrorMessage(result.error || "Failed to load files.");
     }
   }, []);
+
+  useEffect(() => {
+    const ws = getOrCreateWorkspaceId();
+    setWorkspaceId(ws);
+    loadFiles(ws, true);
+  }, [loadFiles]);
 
   // Poll for file status changes if any file is still processing
   useEffect(() => {
@@ -90,7 +91,7 @@ export default function UploadPage() {
     if (!hasProcessing) return;
 
     const timer = setInterval(() => {
-      loadFiles(workspaceId);
+      loadFiles(workspaceId, false);
     }, 3000);
 
     return () => clearInterval(timer);
@@ -440,3 +441,4 @@ export default function UploadPage() {
     </div>
   );
 }
+

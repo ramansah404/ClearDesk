@@ -140,6 +140,7 @@ async def upload_files(
             name=filename,
             type=file_type,
             role=role if role in ("material", "syllabus", "past_paper", "other") else "material",
+            pdf_path=saved_path if file_type == "pdf" else None,
             page_count=0,
             file_size=file_size,
             status="processing",
@@ -214,15 +215,18 @@ def get_file_pdf(
             filename=f"{file_record.name}.pdf" if not file_record.name.lower().endswith(".pdf") else file_record.name,
         )
 
-    if file_record.type == "pdf":
-        # Check original location
-        orig_path = os.path.join(settings.storage_dir, workspace_id, f"{file_id}_{file_record.name}")
-        if os.path.isfile(orig_path):
-            return FastApiFileResponse(
-                path=orig_path,
-                media_type="application/pdf",
-                filename=file_record.name,
-            )
+    # Search workspace storage directory for any file matching file_id
+    ws_dir = os.path.join(settings.storage_dir, workspace_id)
+    if os.path.isdir(ws_dir):
+        for fname in os.listdir(ws_dir):
+            if fname.startswith(f"{file_id}_"):
+                cand_path = os.path.join(ws_dir, fname)
+                if os.path.isfile(cand_path) and (file_record.type == "pdf" or fname.lower().endswith(".pdf")):
+                    return FastApiFileResponse(
+                        path=cand_path,
+                        media_type="application/pdf",
+                        filename=file_record.name,
+                    )
 
     # If PPTX or DOCX could not be converted
     raise HTTPException(
@@ -256,15 +260,17 @@ def delete_file(
     # Delete ChromaDB vectors
     delete_file_from_chroma(file_id)
 
-    # Delete storage file
-    orig_path = os.path.join(settings.storage_dir, workspace_id, f"{file_id}_{file_record.name}")
-    if os.path.isfile(orig_path):
-        try:
-            os.remove(orig_path)
-        except Exception:
-            pass
+    # Delete all storage files matching this file_id in the workspace
+    ws_dir = os.path.join(settings.storage_dir, workspace_id)
+    if os.path.isdir(ws_dir):
+        for fname in os.listdir(ws_dir):
+            if fname.startswith(f"{file_id}_"):
+                try:
+                    os.remove(os.path.join(ws_dir, fname))
+                except Exception:
+                    pass
 
-    if file_record.pdf_path and os.path.isfile(file_record.pdf_path) and file_record.pdf_path != orig_path:
+    if file_record.pdf_path and os.path.isfile(file_record.pdf_path):
         try:
             os.remove(file_record.pdf_path)
         except Exception:
@@ -303,4 +309,4 @@ def delete_workspace(
         db.delete(ws)
         db.commit()
 
-    return {"success": True, "message": "All workspace data permanently deleted."}
+    return {"success": True, "message": f"Workspace '{workspace_id}' data completely deleted."}

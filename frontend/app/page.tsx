@@ -47,20 +47,34 @@ export default function HomePage() {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    const ws = getOrCreateWorkspaceId();
-    setWorkspaceId(ws);
-    loadFiles(ws);
-  }, []);
-
-  const loadFiles = async (ws: string) => {
-    setLoading(true);
+  const loadFiles = React.useCallback(async (ws: string, showLoadingSpinner = true) => {
+    if (!ws) return;
+    if (showLoadingSpinner) setLoading(true);
     const res = await fetchFiles(ws);
     if (res.ok && res.data) {
       setFiles(res.data);
     }
-    setLoading(false);
-  };
+    if (showLoadingSpinner) setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    const ws = getOrCreateWorkspaceId();
+    setWorkspaceId(ws);
+    loadFiles(ws, true);
+  }, [loadFiles]);
+
+  // Background polling if any uploaded file is processing
+  useEffect(() => {
+    if (!workspaceId) return;
+    const hasProcessing = files.some((f) => f.status === "processing");
+    if (!hasProcessing) return;
+
+    const timer = setInterval(() => {
+      loadFiles(workspaceId, false);
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, [workspaceId, files, loadFiles]);
 
   const readyFiles = files.filter((f) => f.status === "ready");
   const totalPages = readyFiles.reduce((acc, f) => acc + (f.page_count || 1), 0);
@@ -413,3 +427,4 @@ export default function HomePage() {
     </div>
   );
 }
+

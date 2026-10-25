@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import {
@@ -71,24 +71,38 @@ export default function AskPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const loadWorkspaceFiles = useCallback(async (ws: string, showLoading = true) => {
+    if (!ws) return;
+    if (showLoading) setLoadingFiles(true);
+    const res = await fetchFiles(ws);
+    if (res.ok && res.data) {
+      setFiles(res.data);
+    }
+    if (showLoading) setLoadingFiles(false);
+  }, []);
+
   useEffect(() => {
     const ws = getOrCreateWorkspaceId();
     setWorkspaceId(ws);
-    loadWorkspaceFiles(ws);
-  }, []);
+    loadWorkspaceFiles(ws, true);
+  }, [loadWorkspaceFiles]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isAsking]);
 
-  const loadWorkspaceFiles = async (ws: string) => {
-    setLoadingFiles(true);
-    const res = await fetchFiles(ws);
-    if (res.ok && res.data) {
-      setFiles(res.data);
-    }
-    setLoadingFiles(false);
-  };
+  // Background polling for files in processing state
+  useEffect(() => {
+    if (!workspaceId) return;
+    const hasProcessing = files.some((f) => f.status === "processing");
+    if (!hasProcessing) return;
+
+    const timer = setInterval(() => {
+      loadWorkspaceFiles(workspaceId, false);
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, [workspaceId, files, loadWorkspaceFiles]);
 
   const handleCopyAnswer = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -740,3 +754,4 @@ export default function AskPage() {
     </div>
   );
 }
+
